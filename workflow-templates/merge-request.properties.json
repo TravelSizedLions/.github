@@ -1,9 +1,0 @@
-{
-  "name": "Merge Request",
-  "description": "Runs all unit tests present in the consuming repository",
-  "iconName": "octicon beaker",
-  "categories": ["GDScript"],
-  "filePatterns": [
-      ".*td\\.gd"
-  ]
-}
