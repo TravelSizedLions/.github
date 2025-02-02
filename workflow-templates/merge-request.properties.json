@@ -1,0 +1,11 @@
+{
+  "name": "Merge Request",
+  "description": "This template installs any dependencies for the repository and runs unit tests",
+  "iconName": "octicon beaker",
+  "categories": ["GDScript"],
+  "filePatterns": [
+    "*addons\\.json",
+    "*addons\\.jsonc",
+    "*test\\.gd"
+  ]
+}
