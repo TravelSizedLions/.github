@@ -3,9 +3,7 @@ run-name: '#${{github.event.pull_request.number}}: "${{github.event.pull_request
 on:
   pull_request:
     branches: [$default-branch]
-  push:
-    branches: [$default-branch]
 
 jobs:
   unit-tests:
-    uses: TravelSizedLions/actions/.github/workflows/.github/workflows/merge-request.yaml@dev
+    uses: TravelSizedLions/actions/.github/workflows/.github/workflows/test-drive.yaml@dev
