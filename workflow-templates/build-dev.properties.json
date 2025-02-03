@@ -1,0 +1,11 @@
+{
+  "name": "Build Dev & Version Bump",
+  "description": "This template verifies the latest pushed commit on a repository's default branch and bumps the version if appropriate.",
+  "iconName": "octicon gear",
+  "categories": ["GDScript"],
+  "filePatterns": [
+    "*addons\\.json",
+    "*addons\\.jsonc",
+    "*test\\.gd"
+  ]
+}
