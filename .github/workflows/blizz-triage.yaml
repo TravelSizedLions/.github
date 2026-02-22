@@ -1,0 +1,103 @@
+# Reusable Blizz triage workflow.
+#
+# Scans open issues and uses an LLM to suggest labels and score each
+# issue's fitness for autonomous agentic implementation. Issues above
+# the confidence threshold get tagged `blizz-candidate` for human review.
+#
+# Label flow: blizz-rejected | blizz-candidate → (human) → blizz-greenlit
+# See also: blizz-implement.yaml
+
+on:
+  workflow_call:
+    inputs:
+      prompt-file:
+        description: "Path to the triage prompt YAML (defaults to the shared prompt in this repo)"
+        type: string
+        default: ".org/prompts/triage-issue.prompt.yml"
+      confidence-threshold:
+        description: "Minimum score (0-100) for blizz-candidate tagging"
+        type: number
+        default: 80
+      body-length-limit:
+        description: "Max issue body length (chars) before auto-triaging"
+        type: number
+        default: 8000
+
+jobs:
+  collect:
+    name: collect
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      issue_numbers: ${{ steps.filter.outputs.numbers }}
+      has_issues: ${{ steps.filter.outputs.has_issues }}
+    steps:
+      - name: Checkout shared scripts
+        uses: actions/checkout@v6
+        with:
+          repository: kernelle-soft/.github
+          path: .org
+
+      - name: Find untriaged issues
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          numbers=$(.org/scripts/blizz/collect.sh | jq -c '.')
+          has_issues=$([ "$(echo "$numbers" | jq length)" -gt 0 ] && echo true || echo false)
+          echo "has_issues=$has_issues" >> "$GITHUB_OUTPUT"
+          echo "numbers=$numbers" >> "$GITHUB_OUTPUT"
+
+  triage:
+    name: triage
+    needs: collect
+    if: needs.collect.outputs.has_issues == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      models: read
+      contents: read
+    strategy:
+      matrix:
+        issue_number: ${{ fromJson(needs.collect.outputs.issue_numbers) }}
+      max-parallel: 3
+      fail-fast: false
+    steps:
+      - name: Checkout calling repo
+        uses: actions/checkout@v6
+
+      - name: Checkout shared scripts
+        uses: actions/checkout@v6
+        with:
+          repository: kernelle-soft/.github
+          path: .org
+
+      - name: Fetch issue and label catalog
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BLIZZ_BODY_LENGTH_LIMIT: ${{ inputs.body-length-limit }}
+        run: .org/scripts/blizz/prepare.sh "${{ matrix.issue_number }}"
+
+      - name: Assess issue
+        id: assess
+        if: steps.prepare.outputs.auto_triage != 'true'
+        uses: actions/ai-inference@v2
+        with:
+          prompt-file: ${{ inputs.prompt-file }}
+          file_input: |
+            issue: ./issue.json
+            labels: ./labels.txt
+          max-tokens: 1000
+          temperature: 0.3
+
+      - name: Apply triage results
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BLIZZ_CONFIDENCE_THRESHOLD: ${{ inputs.confidence-threshold }}
+        run: >-
+          .org/scripts/blizz/triage.sh
+          "${{ matrix.issue_number }}"
+          "${{ steps.prepare.outputs.auto_triage == 'true' && './auto_response.json' || steps.assess.outputs.response-file }}"

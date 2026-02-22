@@ -1,0 +1,38 @@
+# Reusable Blizz implementation workflow.
+#
+# Assigns Copilot's coding agent to every open issue tagged
+# `blizz-greenlit`. Copilot creates a branch and opens a PR for each one.
+#
+# Intended to be triggered after a human reviews `blizz-candidate` issues
+# and re-tags the approved ones as `blizz-greenlit`.
+# See also: blizz-triage.yaml
+#
+# Uses a personal PAT (agent-pat) so the coding agent inherits the user's
+# Copilot Pro entitlement. The default GITHUB_TOKEN is an org installation
+# token and doesn't carry Copilot access.
+
+on:
+  workflow_call:
+    secrets:
+      agent-pat:
+        description: "PAT with Copilot Pro entitlement for agent assignment"
+        required: true
+
+jobs:
+  implement:
+    name: implement
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout shared scripts
+        uses: actions/checkout@v6
+        with:
+          repository: kernelle-soft/.github
+          path: .org
+
+      - name: Assign Copilot to greenlit issues
+        env:
+          GH_TOKEN: ${{ secrets.agent-pat }}
+        run: .org/scripts/blizz/implement.sh
