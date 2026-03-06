@@ -21,7 +21,7 @@ on:
 jobs:
   implement:
     name: implement
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.DEFAULT_RUNNER || 'ubuntu-24.04' }}
     permissions:
       contents: read
       issues: write
